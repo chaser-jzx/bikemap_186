@@ -12,7 +12,7 @@ export const locations: Location[] = [
     name: "Soda Hall Rack",
     lat: 37.87558624752073,
     lng: -122.25878751504959,
-    capacity: 4,
+    capacity: 8,
   },
   {
     id: "2",
@@ -33,6 +33,6 @@ export const locations: Location[] = [
     name: "Davis Hall Rack",
     lat: 37.874625560878165,
     lng: -122.25799777350028,
-    capacity: 30,
+    capacity: 12,
   },
 ];
