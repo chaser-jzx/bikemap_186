@@ -24,3 +24,30 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* (removed rule that hid default InfoWindow close box) */
+
+/* Adjust Google Maps InfoWindow close box size and spacing */
+/* Shrink the default close box */
+.gm-style .gm-style-iw > button.gm-ui-hover-effect {
+  width: 18px !important;
+  height: 18px !important;
+  /* move the close box down to visually align with the title */
+  top: 12px !important;
+  right: 10px !important;
+  padding: 0 !important;
+  background-size: 18px 18px !important;
+  transform: none !important;
+}
+
+/* Ensure content has extra right padding so title doesn't sit under the close box */
+.gm-style .gm-style-iw-d {
+  /* equal padding on all sides for InfoWindow content */
+  padding: 10px !important;
+  box-sizing: border-box !important;
+}
+
+/* Slightly tighten title line-height inside InfoWindow */
+.gm-style .gm-style-iw .text-lg {
+  line-height: 1 !important;
+}

@@ -13,13 +13,24 @@ import type { Location } from "@/data/locations";
 const API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY!;
 const SF_CENTER = { lat: 37.7749, lng: -122.4194 };
 
+export type TravelMode = "BICYCLING" | "DRIVING" | "WALKING" | "TRANSIT";
+
+export interface RouteRequest {
+  origin: string;
+  destination: string;
+  travelMode?: TravelMode;
+}
+
 function FitBounds({ locations }: { locations: Location[] }) {
   const map = useMap();
 
   useEffect(() => {
     if (!map || locations.length === 0) return;
 
-    const bounds = new google.maps.LatLngBounds();
+    const g = (window as any).google;
+    if (!g) return;
+
+    const bounds = new g.maps.LatLngBounds();
     locations.forEach((loc) => bounds.extend({ lat: loc.lat, lng: loc.lng }));
     map.fitBounds(bounds, 60);
   }, [map, locations]);
@@ -27,63 +38,251 @@ function FitBounds({ locations }: { locations: Location[] }) {
   return null;
 }
 
-interface MapContentProps {
-  locations: Location[];
-  activeIds: Set<string>;
+function resolveRackLocation(locations: Location[], name: string | null | undefined) {
+  if (!name) return name;
+  const match = locations.find((loc) => loc.name.toLowerCase() === name.toLowerCase());
+  return match ? { lat: match.lat, lng: match.lng } : name;
 }
 
-function MapContent({ locations, activeIds }: MapContentProps) {
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const visible = locations.filter((loc) => activeIds.has(loc.id));
-  const selected = visible.find((loc) => loc.id === selectedId);
+interface RouteInfo {
+  durationText: string;
+  distanceText: string;
+  nearestPin?: string;
+  nearestDistanceText?: string;
+  nearestDurationText?: string;
+}
+
+function RouteLayer({
+  locations,
+  routeRequest,
+  onRouteInfo,
+}: {
+  locations: Location[];
+  routeRequest?: RouteRequest | null;
+  onRouteInfo?: (info: RouteInfo | null) => void;
+}) {
+  const map = useMap();
+
+  useEffect(() => {
+    if (!map || !routeRequest?.origin || !routeRequest?.destination) {
+      onRouteInfo && onRouteInfo(null);
+      return;
+    }
+
+    const g = (window as any).google;
+    if (!g?.maps) return;
+
+    const directionsService = new g.maps.DirectionsService();
+    const directionsRenderer = new g.maps.DirectionsRenderer({
+      map,
+      suppressMarkers: false,
+      preserveViewport: false,
+    });
+
+    const origin = resolveRackLocation(locations, routeRequest.origin);
+    const destination = resolveRackLocation(locations, routeRequest.destination);
+    const travelMode = g.maps.TravelMode[routeRequest.travelMode ?? "BICYCLING"];
+
+    directionsService.route(
+      {
+        origin,
+        destination,
+        travelMode,
+      },
+      (result: any, status: string) => {
+        if (status === "OK" && result.routes.length > 0) {
+          directionsRenderer.setDirections(result);
+          const leg = result.routes[0].legs[0];
+          const routeBaseInfo: RouteInfo = {
+            durationText: leg.duration?.text ?? "",
+            distanceText: leg.distance?.text ?? "",
+          };
+
+          const nearestRackMatch = locations.find((loc) => loc.name.toLowerCase() === routeRequest.destination.toLowerCase());
+          if (nearestRackMatch) {
+            onRouteInfo &&
+              onRouteInfo({
+                ...routeBaseInfo,
+                nearestPin: nearestRackMatch.name,
+                nearestDistanceText: "0 mi",
+                nearestDurationText: "0 min",
+              });
+          } else {
+            const distanceService = new g.maps.DistanceMatrixService();
+            distanceService.getDistanceMatrix(
+              {
+                origins: [routeRequest.destination],
+                destinations: locations.map((loc) => ({ lat: loc.lat, lng: loc.lng })),
+                travelMode,
+                unitSystem: g.maps.UnitSystem.IMPERIAL,
+              },
+              (matrixResult: any, matrixStatus: string) => {
+                if (matrixStatus === "OK" && matrixResult.rows?.[0]?.elements) {
+                  const row = matrixResult.rows[0];
+                  let bestIndex = -1;
+                  let bestDuration = Number.POSITIVE_INFINITY;
+                  row.elements.forEach((element: any, index: number) => {
+                    if (element.status === "OK" && element.duration?.value < bestDuration) {
+                      bestDuration = element.duration.value;
+                      bestIndex = index;
+                    }
+                  });
+                  if (bestIndex !== -1) {
+                    onRouteInfo &&
+                      onRouteInfo({
+                        ...routeBaseInfo,
+                        nearestPin: locations[bestIndex].name,
+                        nearestDistanceText: row.elements[bestIndex].distance?.text ?? "",
+                        nearestDurationText: row.elements[bestIndex].duration?.text ?? "",
+                      });
+                  } else {
+                    onRouteInfo && onRouteInfo(routeBaseInfo);
+                  }
+                } else {
+                  onRouteInfo && onRouteInfo(routeBaseInfo);
+                }
+              }
+            );
+          }
+        } else {
+          console.error("Directions request failed:", status);
+          directionsRenderer.setDirections({ routes: [] } as any);
+          onRouteInfo && onRouteInfo(null);
+        }
+      }
+    );
+
+    return () => {
+      directionsRenderer.setMap(null);
+      onRouteInfo && onRouteInfo(null);
+    };
+  }, [map, locations, routeRequest, onRouteInfo]);
+
+  return null;
+}
+
+interface MapContentProps {
+  locations: Location[];
+  selectedId?: string | null;
+  routeRequest?: RouteRequest | null;
+  onClearSelect?: () => void;
+  onSelect?: (id: string) => void;
+  onRouteTo?: (destination: string) => void;
+}
+
+function MapContent({ locations, selectedId, routeRequest, onClearSelect, onSelect, onRouteTo }: MapContentProps) {
+  const visible = locations;
+  const map = useMap();
+  const [routeInfo, setRouteInfo] = useState<RouteInfo | null>(null);
+
+  useEffect(() => {
+    if (!map) return;
+    if (!selectedId) return;
+
+    const loc = locations.find((l) => l.id === selectedId);
+    if (!loc) return;
+
+    // Center and zoom to the selected location
+    map.panTo({ lat: loc.lat, lng: loc.lng });
+    try {
+      map.setZoom(15);
+    } catch (e) {
+      // ignore if setZoom unavailable
+    }
+  }, [map, selectedId, locations]);
+
+  const selected = selectedId ? locations.find((l) => l.id === selectedId) ?? null : null;
 
   return (
-    <GoogleMap
-      defaultCenter={SF_CENTER}
-      defaultZoom={13}
-      gestureHandling="greedy"
-      disableDefaultUI={false}
-      mapId="bikemap"
-      className="h-full w-full"
-    >
+    <div className="relative h-full w-full">
+      <GoogleMap
+        defaultCenter={SF_CENTER}
+        defaultZoom={13}
+        onClick={() => onClearSelect && onClearSelect()}
+        gestureHandling="greedy"
+        disableDefaultUI={false}
+        mapId="bikemap"
+        className="h-full w-full"
+      >
       {visible.map((loc) => (
         <AdvancedMarker
           key={loc.id}
           position={{ lat: loc.lat, lng: loc.lng }}
-          onClick={() => setSelectedId(loc.id)}
+          onClick={() => onSelect && onSelect(loc.id)}
         />
       ))}
+
+      <RouteLayer locations={locations} routeRequest={routeRequest} onRouteInfo={setRouteInfo} />
+
+      {!selectedId && !routeRequest && visible.length > 0 && <FitBounds locations={visible} />}
 
       {selected && (
         <InfoWindow
           position={{ lat: selected.lat, lng: selected.lng }}
-          onCloseClick={() => setSelectedId(null)}
+          onCloseClick={() => onClearSelect && onClearSelect()}
         >
-          <div className="max-w-[200px]">
-            <strong className="text-sm">{selected.name}</strong>
-            {selected.description && (
-              <p className="mt-1 text-xs text-zinc-600">
-                {selected.description}
-              </p>
-            )}
+          <div className="max-w-[220px]">
+            <div className="flex items-center justify-between gap-3">
+              <strong className="text-lg font-semibold">{selected.name}</strong>
+              <button
+                type="button"
+                onClick={() => onRouteTo && onRouteTo(selected.name)}
+                className="rounded-full border border-zinc-200 bg-white px-2 py-1 text-xs font-medium text-zinc-700 transition hover:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-300 dark:hover:bg-zinc-900"
+              >
+                Directions
+              </button>
+            </div>
+            <div className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
+              Capacity: {selected.capacity ?? "—"}
+            </div>
           </div>
         </InfoWindow>
       )}
-
-      {visible.length > 0 && <FitBounds locations={visible} />}
-    </GoogleMap>
+      </GoogleMap>
+      {routeInfo && (
+        <div className="pointer-events-none absolute left-4 top-4 z-20 max-w-[320px] rounded-2xl border border-zinc-200 bg-white/95 px-4 py-3 text-sm text-zinc-900 shadow-lg backdrop-blur-sm dark:border-zinc-700 dark:bg-zinc-950/90 dark:text-zinc-100">
+          <div className="font-semibold">Biking route</div>
+          <div className="mt-1 flex flex-wrap gap-3 text-xs text-zinc-600 dark:text-zinc-400">
+            <span>{routeInfo.durationText}</span>
+            <span>{routeInfo.distanceText}</span>
+          </div>
+          {routeInfo.nearestPin && (
+            <div className="mt-3 rounded-2xl border border-zinc-200 bg-zinc-50 p-3 text-xs text-zinc-600 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-300">
+              <div className="font-medium">Nearest bicycle rack</div>
+              <div className="mt-1 font-semibold text-zinc-900 dark:text-zinc-100">
+                {routeInfo.nearestPin}
+              </div>
+              <div className="mt-1 text-[11px] text-zinc-500 dark:text-zinc-400">
+                {routeInfo.nearestDurationText} • {routeInfo.nearestDistanceText}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
   );
 }
 
 interface MapProps {
   locations: Location[];
-  activeIds: Set<string>;
+  selectedId?: string | null;
+  routeRequest?: RouteRequest | null;
+  onClearSelect?: () => void;
+  onSelect?: (id: string) => void;
+  onRouteTo?: (destination: string) => void;
 }
 
-export default function Map({ locations, activeIds }: MapProps) {
+export default function Map({ locations, selectedId, routeRequest, onClearSelect, onSelect, onRouteTo }: MapProps) {
   return (
-    <APIProvider apiKey={API_KEY}>
-      <MapContent locations={locations} activeIds={activeIds} />
+    <APIProvider apiKey={API_KEY} libraries={["places"]}>
+      <MapContent
+        locations={locations}
+        selectedId={selectedId}
+        routeRequest={routeRequest}
+        onClearSelect={onClearSelect}
+        onSelect={onSelect}
+        onRouteTo={onRouteTo}
+      />
     </APIProvider>
   );
 }
