@@ -1,10 +1,19 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
-import { locations } from "@/data/locations";
+import { locations as initialLocations } from "@/data/locations";
 import Map, { RouteRequest } from "@/app/components/Map";
+import { useMqttLocations } from "@/app/hooks/useMqttLocations";
 
 export default function Home() {
+  const mqttConfig = {
+    brokerUrl: process.env.NEXT_PUBLIC_MQTT_BROKER_URL || 'wss://broker.hivemq.com:8884/mqtt',
+    username: process.env.NEXT_PUBLIC_MQTT_USERNAME,
+    password: process.env.NEXT_PUBLIC_MQTT_PASSWORD,
+    topicPrefix: process.env.NEXT_PUBLIC_MQTT_TOPIC_PREFIX || 'bikemap/locations/',
+  };
+
+  const { locations, connected } = useMqttLocations(initialLocations, mqttConfig);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [routeOrigin, setRouteOrigin] = useState<string>("");
   const [routeDestination, setRouteDestination] = useState<string>("");

@@ -233,7 +233,7 @@ function MapContent({ locations, selectedId, routeRequest, onClearSelect, onSele
               </button>
             </div>
             <div className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
-              Capacity: {selected.capacity ?? "—"}
+              {selected.capacity - (selected.occupied ?? 0)}/{selected.capacity} spaces available
             </div>
           </div>
         </InfoWindow>

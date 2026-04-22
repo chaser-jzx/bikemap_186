@@ -3,7 +3,8 @@ export interface Location {
   name: string;
   lat: number;
   lng: number;
-  capacity?: number; // number of bicycle spaces (hardcoded)
+  capacity: number; // total number of bicycle spaces
+  occupied?: number; // current number of occupied spaces (optional, defaults to 0)
 }
 
 export const locations: Location[] = [
@@ -13,6 +14,7 @@ export const locations: Location[] = [
     lat: 37.87558624752073,
     lng: -122.25878751504959,
     capacity: 8,
+    occupied: 0,
   },
   {
     id: "2",
@@ -20,6 +22,7 @@ export const locations: Location[] = [
     lat: 37.87606307089439,
     lng: -122.25876984955768,
     capacity: 4,
+    occupied: 0,
   },
   {
     id: "3",
@@ -27,6 +30,7 @@ export const locations: Location[] = [
     lat: 37.87552185641807,
     lng: -122.25971037952607,
     capacity: 4,
+    occupied: 0,
   },
   {
     id: "4",
@@ -34,5 +38,6 @@ export const locations: Location[] = [
     lat: 37.874625560878165,
     lng: -122.25799777350028,
     capacity: 12,
+    occupied: 0,
   },
 ];
