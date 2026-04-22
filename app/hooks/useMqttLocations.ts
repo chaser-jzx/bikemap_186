@@ -5,10 +5,10 @@ import mqtt from 'mqtt';
 import type { Location } from '@/data/locations';
 
 interface MqttConfig {
-  brokerUrl: string; // MUST be wss://...:8884/mqtt
+  brokerUrl: string;  // Change from literal type to generic string
   username?: string;
   password?: string;
-  topicPrefix?: string;
+  topicPrefix: string;
 }
 
 export function useMqttLocations(
