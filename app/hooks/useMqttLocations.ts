@@ -5,7 +5,7 @@ import mqtt from 'mqtt';
 import type { Location } from '@/data/locations';
 
 interface MqttConfig {
-  brokerUrl: string;  // Change from literal type to generic string
+  brokerUrl: string;  
   username?: string;
   password?: string;
   topicPrefix: string;
@@ -47,7 +47,6 @@ export function useMqttLocations(
       try {
         let value: number;
 
-        // Support BOTH raw numbers and JSON
         try {
           const parsed = JSON.parse(message.toString());
           value = parsed.value;
