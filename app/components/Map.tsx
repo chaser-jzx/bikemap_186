@@ -50,6 +50,12 @@ interface RouteInfo {
   nearestPin?: string;
   nearestDistanceText?: string;
   nearestDurationText?: string;
+  secondaryRoute?: {
+    origin: string;
+    destination: string;
+    durationText: string;
+    distanceText: string;
+  };
 }
 
 function RouteLayer({
@@ -77,7 +83,16 @@ function RouteLayer({
       map,
       suppressMarkers: false,
       preserveViewport: false,
+      polylineOptions: {
+        strokeColor: '#4285F4',
+        strokeWeight: 6,
+        strokeOpacity: 0.8,
+      },
     });
+
+    // Secondary route renderer for destination to nearest rack
+    let secondaryDirectionsRenderer: any = null;
+    let customCMarker: any = null;
 
     const origin = resolveRackLocation(locations, routeRequest.origin);
     const destination = resolveRackLocation(locations, routeRequest.destination);
@@ -92,6 +107,15 @@ function RouteLayer({
       (result: any, status: string) => {
         if (status === "OK" && result.routes.length > 0) {
           directionsRenderer.setDirections(result);
+          
+          // Ensure end marker for primary route is labeled 'B'
+          setTimeout(() => {
+            const markers = directionsRenderer.markers;
+            if (markers && markers.length >= 2) {
+              markers[1].setLabel('B'); // Second marker is the destination
+            }
+          }, 50);
+          
           const leg = result.routes[0].legs[0];
           const routeBaseInfo: RouteInfo = {
             durationText: leg.duration?.text ?? "",
@@ -100,6 +124,7 @@ function RouteLayer({
 
           const nearestRackMatch = locations.find((loc) => loc.name.toLowerCase() === routeRequest.destination.toLowerCase());
           if (nearestRackMatch) {
+            // Destination is already a rack, no secondary route needed
             onRouteInfo &&
               onRouteInfo({
                 ...routeBaseInfo,
@@ -108,6 +133,7 @@ function RouteLayer({
                 nearestDurationText: "0 min",
               });
           } else {
+            // Destination is not a rack, find nearest rack and show secondary route
             const distanceService = new g.maps.DistanceMatrixService();
             distanceService.getDistanceMatrix(
               {
@@ -128,13 +154,67 @@ function RouteLayer({
                     }
                   });
                   if (bestIndex !== -1) {
-                    onRouteInfo &&
-                      onRouteInfo({
-                        ...routeBaseInfo,
-                        nearestPin: locations[bestIndex].name,
-                        nearestDistanceText: row.elements[bestIndex].distance?.text ?? "",
-                        nearestDurationText: row.elements[bestIndex].duration?.text ?? "",
-                      });
+                    const nearestRack = locations[bestIndex];
+
+                    // Create secondary route from destination to nearest rack
+                    secondaryDirectionsRenderer = new g.maps.DirectionsRenderer({
+                      map,
+                      suppressMarkers: true, // Suppress default markers, we'll add custom C marker
+                      preserveViewport: false,
+                      polylineOptions: {
+                        strokeColor: '#34A853',
+                        strokeWeight: 4,
+                        strokeOpacity: 0.8,
+                      },
+                    });
+
+                    // Create custom marker for the rack with label 'C'
+                    directionsService.route(
+                      {
+                        origin: routeRequest.destination,
+                        destination: { lat: nearestRack.lat, lng: nearestRack.lng },
+                        travelMode,
+                      },
+                      (secondaryResult: any, secondaryStatus: string) => {
+                        if (secondaryStatus === "OK" && secondaryResult.routes.length > 0) {
+                          secondaryDirectionsRenderer.setDirections(secondaryResult);
+                          
+                          // Add custom marker at the rack with label 'C'
+                          if (!customCMarker) {
+                            customCMarker = new g.maps.Marker({
+                              position: { lat: nearestRack.lat, lng: nearestRack.lng },
+                              map,
+                              label: 'C',
+                              title: nearestRack.name
+                            });
+                          }
+                          
+                          const secondaryLeg = secondaryResult.routes[0].legs[0];
+
+                          onRouteInfo &&
+                            onRouteInfo({
+                              ...routeBaseInfo,
+                              nearestPin: nearestRack.name,
+                              nearestDistanceText: row.elements[bestIndex].distance?.text ?? "",
+                              nearestDurationText: row.elements[bestIndex].duration?.text ?? "",
+                              secondaryRoute: {
+                                origin: routeRequest.destination,
+                                destination: nearestRack.name,
+                                durationText: secondaryLeg.duration?.text ?? "",
+                                distanceText: secondaryLeg.distance?.text ?? "",
+                              },
+                            });
+                        } else {
+                          onRouteInfo &&
+                            onRouteInfo({
+                              ...routeBaseInfo,
+                              nearestPin: nearestRack.name,
+                              nearestDistanceText: row.elements[bestIndex].distance?.text ?? "",
+                              nearestDurationText: row.elements[bestIndex].duration?.text ?? "",
+                            });
+                        }
+                      }
+                    );
                   } else {
                     onRouteInfo && onRouteInfo(routeBaseInfo);
                   }
@@ -154,6 +234,12 @@ function RouteLayer({
 
     return () => {
       directionsRenderer.setMap(null);
+      if (secondaryDirectionsRenderer) {
+        secondaryDirectionsRenderer.setMap(null);
+      }
+      if (customCMarker) {
+        customCMarker.setMap(null);
+      }
       onRouteInfo && onRouteInfo(null);
     };
   }, [map, locations, routeRequest, onRouteInfo]);
@@ -246,7 +332,18 @@ function MapContent({ locations, selectedId, routeRequest, onClearSelect, onSele
             <span>{routeInfo.durationText}</span>
             <span>{routeInfo.distanceText}</span>
           </div>
-          {routeInfo.nearestPin && (
+          {routeInfo.secondaryRoute && (
+            <div className="mt-3 rounded-2xl border border-green-200 bg-green-50 p-3 text-xs text-green-700 dark:border-green-700 dark:bg-green-950 dark:text-green-300">
+              <div className="font-medium">To nearest bicycle rack</div>
+              <div className="mt-1 text-[11px]">
+                <div className="font-semibold">{routeInfo.secondaryRoute.destination}</div>
+                <div className="mt-1 text-[11px] text-green-600 dark:text-green-400">
+                  {routeInfo.secondaryRoute.durationText} • {routeInfo.secondaryRoute.distanceText}
+                </div>
+              </div>
+            </div>
+          )}
+          {routeInfo.nearestPin && !routeInfo.secondaryRoute && (
             <div className="mt-3 rounded-2xl border border-zinc-200 bg-zinc-50 p-3 text-xs text-zinc-600 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-300">
               <div className="font-medium">Nearest bicycle rack</div>
               <div className="mt-1 font-semibold text-zinc-900 dark:text-zinc-100">

@@ -5,13 +5,16 @@ import mqtt from 'mqtt';
 import type { Location } from '@/data/locations';
 
 interface MqttConfig {
-  brokerUrl: string;
+  brokerUrl: string; // MUST be wss://...:8884/mqtt
   username?: string;
   password?: string;
   topicPrefix?: string;
 }
 
-export function useMqttLocations(initialLocations: Location[], config: MqttConfig) {
+export function useMqttLocations(
+  initialLocations: Location[],
+  config: MqttConfig
+) {
   const [locations, setLocations] = useState<Location[]>(initialLocations);
   const [connected, setConnected] = useState(false);
 
@@ -28,63 +31,70 @@ export function useMqttLocations(initialLocations: Location[], config: MqttConfi
       console.log('Connected to MQTT broker');
       setConnected(true);
 
-      // Subscribe to topics for each location
-      const topicPrefix = config.topicPrefix || 'bikemap/locations/';
-      locations.forEach((location) => {
-        const topic = `${topicPrefix}${location.id}/occupied`;
-        client.subscribe(topic, (err) => {
-          if (err) {
-            console.error(`Failed to subscribe to ${topic}:`, err);
-          } else {
-            console.log(`Subscribed to ${topic}`);
-          }
-        });
+      // Single topic
+      client.subscribe('bike/load', (err) => {
+        if (err) {
+          console.error('Subscribe error:', err);
+        } else {
+          console.log('Subscribed to bike/load');
+        }
       });
     });
 
     client.on('message', (topic, message) => {
-      try {
-        const topicParts = topic.split('/');
-        const locationId = topicParts[topicParts.length - 2]; // Extract location ID from topic
+      if (topic !== 'bike/load') return;
 
-        const occupied = parseInt(message.toString(), 10);
-        if (isNaN(occupied)) {
-          console.warn(`Invalid occupied count received: ${message.toString()}`);
+      try {
+        let value: number;
+
+        // Support BOTH raw numbers and JSON
+        try {
+          const parsed = JSON.parse(message.toString());
+          value = parsed.value;
+        } catch {
+          value = parseFloat(message.toString());
+        }
+
+        if (isNaN(value)) {
+          console.warn('Invalid value:', message.toString());
           return;
         }
 
-        setLocations((prevLocations) =>
-          prevLocations.map((loc) =>
-            loc.id === locationId
-              ? { ...loc, occupied: Math.max(0, Math.min(loc.capacity, occupied)) }
+        setLocations((prev) =>
+          prev.map((loc, i) =>
+            i === 0
+              ? {
+                  ...loc,
+                  occupied: Math.max(0, Math.min(loc.capacity, value)),
+                }
               : loc
           )
         );
 
-        console.log(`Updated location ${locationId}: occupied = ${occupied}`);
-      } catch (error) {
-        console.error('Error processing MQTT message:', error);
+        console.log('MQTT update:', value);
+      } catch (err) {
+        console.error('MQTT message error:', err);
       }
     });
 
-    client.on('error', (error) => {
-      console.error('MQTT connection error:', error);
+    client.on('error', (err) => {
+      console.error('MQTT error:', err);
       setConnected(false);
     });
 
     client.on('offline', () => {
-      console.log('MQTT client offline');
+      console.log('MQTT offline');
       setConnected(false);
     });
 
     client.on('reconnect', () => {
-      console.log('MQTT client reconnecting...');
+      console.log('MQTT reconnecting...');
     });
 
     return () => {
       client.end();
     };
-  }, [config.brokerUrl, config.username, config.password, config.topicPrefix]);
+  }, [config.brokerUrl, config.username, config.password]);
 
   return { locations, connected };
 }

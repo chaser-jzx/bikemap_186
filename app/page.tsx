@@ -44,6 +44,21 @@ export default function Home() {
     return () => window.clearInterval(interval);
   }, []);
 
+  // Close dropdowns when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Element;
+      if (!target.closest('.dropdown-container')) {
+        setOriginSuggestions([]);
+        setDestinationSuggestions([]);
+        setRackSuggestions([]);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   function handleRouteInput(value: string, setValue: (value: string) => void, setSuggestions: (items: string[]) => void) {
     setValue(value);
     if (autocompleteService && value.length > 1) {
@@ -131,7 +146,7 @@ export default function Home() {
               <div className="space-y-3">
                 <label className="block text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
                   Origin
-                  <div className="relative">
+                  <div className="relative dropdown-container">
                     <input
                       value={routeOrigin}
                       onChange={(event) => handleRouteInput(event.target.value, setRouteOrigin, setOriginSuggestions)}
@@ -156,7 +171,7 @@ export default function Home() {
                 </label>
                 <label className="block text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
                   Destination
-                  <div className="relative">
+                  <div className="relative dropdown-container">
                     <input
                       value={routeDestination}
                       onChange={(event) => handleRouteInput(event.target.value, setRouteDestination, setDestinationSuggestions)}
@@ -181,7 +196,7 @@ export default function Home() {
                 </label>
                 <div className="rounded-2xl border border-dashed border-zinc-300 bg-white p-3 text-xs text-zinc-600 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-300">
                   <p className="mb-2 font-semibold">Or choose a rack</p>
-                  <div className="relative">
+                  <div className="relative dropdown-container">
                     <input
                       value={rackQuery}
                       onFocus={() => setRackSuggestions(locations.map((loc) => loc.name))}
