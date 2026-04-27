@@ -19,6 +19,7 @@ export default function Home() {
   const [routeDestination, setRouteDestination] = useState<string>("");
   const [routeRequest, setRouteRequest] = useState<RouteRequest | null>(null);
   const [routePlannerOpen, setRoutePlannerOpen] = useState<boolean>(false);
+  const [racksOpen, setRacksOpen] = useState<boolean>(true);
   const [originSuggestions, setOriginSuggestions] = useState<string[]>([]);
   const [destinationSuggestions, setDestinationSuggestions] = useState<string[]>([]);
   const [rackQuery, setRackQuery] = useState<string>("");
@@ -114,6 +115,10 @@ export default function Home() {
 
   function toggleRoutePlanner() {
     setRoutePlannerOpen((open) => !open);
+  }
+
+  function toggleRacks() {
+    setRacksOpen((open) => !open);
   }
 
   function handleRouteTo(destination: string) {
@@ -242,26 +247,37 @@ export default function Home() {
             </form>
           )}
         </div>
-        <ul className="space-y-1">
-          {locations.map((loc) => {
-            const active = selectedId === loc.id;
-            return (
-              <li key={loc.id}>
-                <button
-                  onClick={() => handleSelect(loc.id)}
-                  className={`w-full rounded-lg px-3 py-2.5 text-left transition-colors ${
-                    active
-                      ? "bg-blue-50 text-blue-900 dark:bg-blue-950 dark:text-blue-100"
-                      : "text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
-                  }`}
-                >
-                  <span className="text-sm font-medium">{loc.name}</span>
-                </button>
-              </li>
-            );
-          })}
-        </ul>
-        {/* details moved to map InfoWindow */}
+        <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-zinc-50 text-sm shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
+          <button
+            type="button"
+            onClick={toggleRacks}
+            className="flex w-full items-center gap-2 px-4 py-3 text-left text-sm font-semibold text-zinc-900 transition hover:bg-zinc-100 dark:text-zinc-100 dark:hover:bg-zinc-900"
+          >
+            <span className={`inline-block transition-transform ${racksOpen ? "rotate-90" : ""}`}>▶</span>
+            Available racks
+          </button>
+          {racksOpen && (
+            <ul className="space-y-1 border-t border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-950">
+              {locations.map((loc) => {
+                const active = selectedId === loc.id;
+                return (
+                  <li key={loc.id}>
+                    <button
+                      onClick={() => handleSelect(loc.id)}
+                      className={`w-full rounded-lg px-3 py-2.5 text-left text-sm font-medium transition-colors ${
+                        active
+                          ? "bg-blue-50 text-blue-900 dark:bg-blue-950 dark:text-blue-100"
+                          : "text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                      }`}
+                    >
+                      {loc.name}
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
       </aside>
 
       {/* Map */}
