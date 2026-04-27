@@ -18,7 +18,7 @@ export default function Home() {
   const [routeOrigin, setRouteOrigin] = useState<string>("");
   const [routeDestination, setRouteDestination] = useState<string>("");
   const [routeRequest, setRouteRequest] = useState<RouteRequest | null>(null);
-  const [routePlannerOpen, setRoutePlannerOpen] = useState<boolean>(false);
+  const [routePlannerOpen, setRoutePlannerOpen] = useState<boolean>(true);
   const [racksOpen, setRacksOpen] = useState<boolean>(true);
   const [originSuggestions, setOriginSuggestions] = useState<string[]>([]);
   const [destinationSuggestions, setDestinationSuggestions] = useState<string[]>([]);
