@@ -137,7 +137,7 @@ export default function Home() {
         <div className="mb-4">
           <h1 className="text-lg font-semibold tracking-tight">Bike Map</h1>
         </div>
-        <div className="mb-6 overflow-visible rounded-2xl border border-zinc-200 bg-zinc-50 text-sm shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
+        <div className="mb-6 overflow-hidden rounded-2xl border border-zinc-200 bg-zinc-50 text-sm shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
           <button
             type="button"
             onClick={toggleRoutePlanner}
