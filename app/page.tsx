@@ -48,8 +48,8 @@ export default function Home() {
   // Close dropdowns when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      const target = event.target as Element;
-      if (!target.closest('.dropdown-container')) {
+      const target = event.target;
+      if (!(target instanceof Element) || !target.closest('.dropdown-container')) {
         setOriginSuggestions([]);
         setDestinationSuggestions([]);
         setRackSuggestions([]);

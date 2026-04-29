@@ -9,7 +9,7 @@ export interface Location {
 
 export const locations: Location[] = [
   {
-    id: "1",
+    id: "rack_1",
     name: "Soda Hall Rack",
     lat: 37.87558624752073,
     lng: -122.25878751504959,
@@ -17,7 +17,7 @@ export const locations: Location[] = [
     occupied: 0,
   },
   {
-    id: "2",
+    id: "rack_ 2",
     name: "Jacobs Hall Rack",
     lat: 37.87606307089439,
     lng: -122.25876984955768,
@@ -25,7 +25,7 @@ export const locations: Location[] = [
     occupied: 0,
   },
   {
-    id: "3",
+    id: "rack_3",
     name: "Etcheverry Hall Rack",
     lat: 37.87552185641807,
     lng: -122.25971037952607,
@@ -33,7 +33,7 @@ export const locations: Location[] = [
     occupied: 0,
   },
   {
-    id: "4",
+    id: "rack_4",
     name: "Davis Hall Rack",
     lat: 37.874625560878165,
     lng: -122.25799777350028,

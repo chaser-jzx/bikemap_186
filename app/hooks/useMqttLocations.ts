@@ -19,6 +19,12 @@ export function useMqttLocations(
   const [connected, setConnected] = useState(false);
 
   useEffect(() => {
+    console.log('MQTT Hook - Initializing with config:', {
+      brokerUrl: config.brokerUrl,
+      username: config.username,
+      topicPrefix: config.topicPrefix,
+    });
+
     const client = mqtt.connect(config.brokerUrl, {
       username: config.username,
       password: config.password,
@@ -39,38 +45,57 @@ export function useMqttLocations(
           console.log('Subscribed to bike/load');
         }
       });
+
+      // Debug: Subscribe to all topics to see if ANY messages arrive
+      client.subscribe('#', (err) => {
+        if (err) {
+          console.error('Debug subscribe error:', err);
+        } else {
+          console.log('Debug: Subscribed to # (all topics)');
+        }
+      });
     });
 
     client.on('message', (topic, message) => {
-      if (topic !== 'bike/load') return;
+      console.log('🔔 DEBUG: Message received on ANY topic:', topic, 'Payload:', message.toString());
+      
+      if (topic !== 'bike/load') {
+        return;
+      }
+      
+      console.log('✅ Message on bike/load topic');
 
       try {
-        let value: number;
+        const payload = JSON.parse(message.toString());
+        const { location_id, occupied } = payload;
 
-        try {
-          const parsed = JSON.parse(message.toString());
-          value = parsed.value;
-        } catch {
-          value = parseFloat(message.toString());
-        }
+        console.log('Parsed payload:', { location_id, occupied });
 
-        if (isNaN(value)) {
-          console.warn('Invalid value:', message.toString());
+        if (!location_id || typeof occupied !== 'boolean') {
+          console.warn('Invalid payload format - location_id:', location_id, 'occupied type:', typeof occupied);
           return;
         }
 
         setLocations((prev) =>
-          prev.map((loc, i) =>
-            i === 0
-              ? {
-                  ...loc,
-                  occupied: Math.max(0, Math.min(loc.capacity, value)),
-                }
-              : loc
-          )
+          prev.map((loc) => {
+            if (loc.id !== location_id) {
+              return loc;
+            }
+
+            // When occupied is true, subtract 1 from spaces free (add 1 to occupied)
+            // When occupied is false, add 1 to spaces free (subtract 1 from occupied)
+            const newOccupied = occupied
+              ? (loc.occupied || 0) + 1
+              : Math.max(0, (loc.occupied || 0) - 1);
+
+            return {
+              ...loc,
+              occupied: Math.max(0, Math.min(loc.capacity, newOccupied)),
+            };
+          })
         );
 
-        console.log('MQTT update:', value);
+        console.log(`MQTT update for ${location_id}: occupied=${occupied}`);
       } catch (err) {
         console.error('MQTT message error:', err);
       }
@@ -93,7 +118,7 @@ export function useMqttLocations(
     return () => {
       client.end();
     };
-  }, [config.brokerUrl, config.username, config.password]);
+  }, [config.brokerUrl, config.username, config.password, config.topicPrefix]);
 
   return { locations, connected };
 }
