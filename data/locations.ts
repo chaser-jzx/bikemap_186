@@ -17,7 +17,7 @@ export const locations: Location[] = [
     occupied: 0,
   },
   {
-    id: "rack_ 2",
+    id: "rack_2",
     name: "Jacobs Hall Rack",
     lat: 37.87606307089439,
     lng: -122.25876984955768,
