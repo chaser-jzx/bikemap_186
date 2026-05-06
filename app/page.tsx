@@ -28,6 +28,7 @@ export default function Home() {
   const [rackSuggestions, setRackSuggestions] = useState<string[]>([]);
   const rackInputRef = useRef<HTMLInputElement>(null);
   const [autocompleteService, setAutocompleteService] = useState<any>(null);
+  const [mobileTab, setMobileTab] = useState<'planner' | 'map'>('planner');
 
   function handleSelect(id: string) {
     setSelectedId(id);
@@ -146,11 +147,11 @@ export default function Home() {
   return (
     <div className="flex h-screen flex-col md:flex-row">
       {/* Sidebar */}
-      <aside className={`w-full shrink-0 max-h-[70vh] md:max-h-none overflow-y-auto border-b border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950 md:w-80 md:border-b-0 md:border-r ${sidebarOpen ? '' : 'hidden md:block'}`}>
-        <div className="mb-4">
+      <aside className={`relative w-full shrink-0 flex flex-col md:max-h-none md:overflow-y-auto border-b border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950 md:w-80 md:border-b-0 md:border-r md:p-4 ${sidebarOpen ? '' : 'hidden md:block'}`}>
+        <div className="mb-4 p-4 md:p-0">
           <h1 className="text-lg font-semibold tracking-tight">Bike Map</h1>
         </div>
-        <div className="mb-6 overflow-hidden rounded-2xl border border-zinc-200 bg-zinc-50 text-sm shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
+        <div className="mb-6 overflow-hidden rounded-2xl border border-zinc-200 bg-zinc-50 text-sm shadow-sm dark:border-zinc-800 dark:bg-zinc-950 mx-4 md:mx-0 md:mb-6">
           <button
             type="button"
             onClick={toggleRoutePlanner}
@@ -230,7 +231,7 @@ export default function Home() {
                           top: rackInputRef.current?.getBoundingClientRect().bottom,
                           left: rackInputRef.current?.getBoundingClientRect().left,
                           width: rackInputRef.current?.getBoundingClientRect().width,
-                          maxHeight: '200px',
+                          maxHeight: '140px',
                           overflowY: 'auto',
                           zIndex: 50,
                         }}
@@ -273,7 +274,7 @@ export default function Home() {
             </form>
           )}
         </div>
-        <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-zinc-50 text-sm shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
+        <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-zinc-50 text-sm shadow-sm dark:border-zinc-800 dark:bg-zinc-950 mx-4 md:mx-0 flex-1 md:flex-none md:overflow-y-auto">
           <button
             type="button"
             onClick={toggleRacks}
@@ -304,10 +305,34 @@ export default function Home() {
             </ul>
           )}
         </div>
+        
+        {/* Mobile Tab Navigation */}
+        <div className="md:hidden flex border-t border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950 mt-auto">
+          <button
+            onClick={() => setMobileTab('planner')}
+            className={`flex-1 py-3 text-sm font-medium transition-colors ${
+              mobileTab === 'planner'
+                ? 'text-blue-900 border-b-2 border-blue-900 dark:text-blue-400 dark:border-blue-400'
+                : 'text-zinc-600 dark:text-zinc-400'
+            }`}
+          >
+            Route Planner
+          </button>
+          <button
+            onClick={() => setMobileTab('map')}
+            className={`flex-1 py-3 text-sm font-medium transition-colors ${
+              mobileTab === 'map'
+                ? 'text-blue-900 border-b-2 border-blue-900 dark:text-blue-400 dark:border-blue-400'
+                : 'text-zinc-600 dark:text-zinc-400'
+            }`}
+          >
+            Map
+          </button>
+        </div>
       </aside>
 
       {/* Map */}
-      <main className="relative flex-1 h-full">
+      <main className={`relative flex-1 h-full md:block ${mobileTab === 'map' ? 'block' : 'hidden'}`}>
         <button
           onClick={() => setSidebarOpen(!sidebarOpen)}
           className="absolute top-4 left-4 z-10 rounded-full bg-white p-2 shadow-md md:hidden dark:bg-zinc-950"
