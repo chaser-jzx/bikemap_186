@@ -30,6 +30,7 @@ export default function Home() {
   const [autocompleteService, setAutocompleteService] = useState<any>(null);
   const [sheetOpen, setSheetOpen] = useState<boolean>(false);
   const sheetRef = useRef<HTMLDivElement>(null);
+  const [touchStart, setTouchStart] = useState<number | null>(null);
 
   function handleSelect(id: string) {
     setSelectedId(id);
@@ -74,6 +75,43 @@ export default function Home() {
     aside?.addEventListener('scroll', handleScroll);
     return () => aside?.removeEventListener('scroll', handleScroll);
   }, []);
+
+  // Handle swipe gestures on the sheet
+  useEffect(() => {
+    const sheet = sheetRef.current;
+    if (!sheet) return;
+
+    const handleTouchStart = (e: TouchEvent) => {
+      setTouchStart(e.touches[0].clientY);
+    };
+
+    const handleTouchEnd = (e: TouchEvent) => {
+      if (touchStart === null) return;
+
+      const touchEnd = e.changedTouches[0].clientY;
+      const diff = touchStart - touchEnd;
+      const threshold = 50; // Minimum swipe distance
+
+      // Swipe down (closing the sheet)
+      if (diff < -threshold && sheetOpen) {
+        setSheetOpen(false);
+      }
+      // Swipe up (opening the sheet)
+      if (diff > threshold && !sheetOpen) {
+        setSheetOpen(true);
+      }
+
+      setTouchStart(null);
+    };
+
+    sheet.addEventListener('touchstart', handleTouchStart, { passive: true });
+    sheet.addEventListener('touchend', handleTouchEnd, { passive: true });
+
+    return () => {
+      sheet.removeEventListener('touchstart', handleTouchStart);
+      sheet.removeEventListener('touchend', handleTouchEnd);
+    };
+  }, [sheetOpen, touchStart]);
 
   function handleRouteInput(value: string, setValue: (value: string) => void, setSuggestions: (items: string[]) => void) {
     setValue(value);
