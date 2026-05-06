@@ -373,7 +373,7 @@ export default function Home() {
           ref={sheetRef}
           className={`absolute bottom-0 left-0 right-0 z-40 md:hidden bg-white dark:bg-zinc-950 rounded-t-3xl border-t border-zinc-200 dark:border-zinc-800 shadow-2xl transition-all duration-300 ease-out overflow-hidden`}
           style={{
-            maxHeight: sheetOpen ? '85vh' : '100px',
+            maxHeight: sheetOpen ? '70vh' : '100px',
             boxShadow: sheetOpen ? '0 -20px 25px -5px rgba(0, 0, 0, 0.1)' : '0 -5px 10px -2px rgba(0, 0, 0, 0.05)',
           }}
         >
@@ -392,7 +392,7 @@ export default function Home() {
           
           {/* Sheet Content */}
           {sheetOpen && (
-            <div className="overflow-y-auto px-4 pb-4" style={{ maxHeight: 'calc(85vh - 60px)' }}>
+            <div className="overflow-y-auto px-4 pb-4" style={{ maxHeight: 'calc(70vh - 60px)' }}>
               {routePlannerContent}
             </div>
           )}
