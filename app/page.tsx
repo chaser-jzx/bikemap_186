@@ -113,6 +113,13 @@ export default function Home() {
     };
   }, [sheetOpen, touchStart]);
 
+  // Open sheet when a route is requested
+  useEffect(() => {
+    if (routeRequest) {
+      setSheetOpen(true);
+    }
+  }, [routeRequest]);
+
   function handleRouteInput(value: string, setValue: (value: string) => void, setSuggestions: (items: string[]) => void) {
     setValue(value);
     if (autocompleteService && value.length > 1) {
@@ -179,6 +186,8 @@ export default function Home() {
     if (routeOrigin) {
       setRouteRequest({ origin: routeOrigin, destination, travelMode: "BICYCLING" });
     }
+    // Open the sheet so user sees the route planner
+    setSheetOpen(true);
   }
 
   // Render route planner content
