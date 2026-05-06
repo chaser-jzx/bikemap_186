@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import {
   APIProvider,
   Map as GoogleMap,
-  AdvancedMarker,
+  Marker,
   InfoWindow,
   useMap,
 } from "@vis.gl/react-google-maps";
@@ -287,11 +287,10 @@ function MapContent({ locations, selectedId, routeRequest, onClearSelect, onSele
         onClick={() => onClearSelect && onClearSelect()}
         gestureHandling="greedy"
         disableDefaultUI={false}
-        mapId="bikemap"
-        className="h-full w-full"
+        style={{ height: '100%', width: '100%' }}
       >
       {visible.map((loc) => (
-        <AdvancedMarker
+        <Marker
           key={loc.id}
           position={{ lat: loc.lat, lng: loc.lng }}
           onClick={() => onSelect && onSelect(loc.id)}

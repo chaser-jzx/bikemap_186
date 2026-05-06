@@ -1,6 +1,7 @@
 "use client";
 
-import { FormEvent, useEffect, useState, useMemo } from "react";
+import { FormEvent, useEffect, useState, useMemo, useRef } from "react";
+import { createPortal } from "react-dom";
 import { locations as initialLocations } from "@/data/locations";
 import Map, { RouteRequest } from "@/app/components/Map";
 import { useMqttLocations } from "@/app/hooks/useMqttLocations";
@@ -20,10 +21,12 @@ export default function Home() {
   const [routeRequest, setRouteRequest] = useState<RouteRequest | null>(null);
   const [routePlannerOpen, setRoutePlannerOpen] = useState<boolean>(true);
   const [racksOpen, setRacksOpen] = useState<boolean>(true);
+  const [sidebarOpen, setSidebarOpen] = useState<boolean>(true);
   const [originSuggestions, setOriginSuggestions] = useState<string[]>([]);
   const [destinationSuggestions, setDestinationSuggestions] = useState<string[]>([]);
   const [rackQuery, setRackQuery] = useState<string>("");
   const [rackSuggestions, setRackSuggestions] = useState<string[]>([]);
+  const rackInputRef = useRef<HTMLInputElement>(null);
   const [autocompleteService, setAutocompleteService] = useState<any>(null);
 
   function handleSelect(id: string) {
@@ -49,7 +52,7 @@ export default function Home() {
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target;
-      if (!(target instanceof Element) || !target.closest('.dropdown-container')) {
+      if (!(target instanceof Element) || !target.closest('.dropdown-container') && !target.closest('.dropdown-menu')) {
         setOriginSuggestions([]);
         setDestinationSuggestions([]);
         setRackSuggestions([]);
@@ -58,6 +61,16 @@ export default function Home() {
 
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Close rack dropdown on scroll
+  useEffect(() => {
+    const aside = document.querySelector('aside');
+    const handleScroll = () => {
+      setRackSuggestions([]);
+    };
+    aside?.addEventListener('scroll', handleScroll);
+    return () => aside?.removeEventListener('scroll', handleScroll);
   }, []);
 
   function handleRouteInput(value: string, setValue: (value: string) => void, setSuggestions: (items: string[]) => void) {
@@ -131,9 +144,9 @@ export default function Home() {
   // selectedLoc removed from sidebar - details will be shown on the map InfoWindow
 
   return (
-    <div className="flex min-h-screen flex-col md:flex-row">
+    <div className="flex h-screen flex-col md:flex-row">
       {/* Sidebar */}
-      <aside className="w-full shrink-0 overflow-y-auto border-b border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950 md:w-80 md:border-b-0 md:border-r">
+      <aside className={`w-full shrink-0 max-h-[70vh] md:max-h-none overflow-y-auto border-b border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950 md:w-80 md:border-b-0 md:border-r ${sidebarOpen ? '' : 'hidden md:block'}`}>
         <div className="mb-4">
           <h1 className="text-lg font-semibold tracking-tight">Bike Map</h1>
         </div>
@@ -208,9 +221,21 @@ export default function Home() {
                       onChange={(event) => handleRackQueryInput(event.target.value)}
                       placeholder="Select a rack"
                       className="mt-1 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-zinc-700 dark:bg-zinc-900 dark:text-white dark:focus:border-blue-400 dark:focus:ring-blue-900"
+                      ref={rackInputRef}
                     />
-                    {rackSuggestions.length > 0 && (
-                      <div className="absolute left-0 right-0 z-10 mt-1 max-h-56 overflow-y-auto rounded-2xl border border-zinc-200 bg-white shadow-lg dark:border-zinc-700 dark:bg-zinc-950">
+                    {rackSuggestions.length > 0 && createPortal(
+                      <div
+                        style={{
+                          position: 'fixed',
+                          top: rackInputRef.current?.getBoundingClientRect().bottom,
+                          left: rackInputRef.current?.getBoundingClientRect().left,
+                          width: rackInputRef.current?.getBoundingClientRect().width,
+                          maxHeight: '200px',
+                          overflowY: 'auto',
+                          zIndex: 50,
+                        }}
+                        className="dropdown-menu rounded-2xl border border-zinc-200 bg-white shadow-lg dark:border-zinc-700 dark:bg-zinc-950"
+                      >
                         {rackSuggestions.map((suggestion) => (
                           <button
                             key={suggestion}
@@ -221,7 +246,8 @@ export default function Home() {
                             {suggestion}
                           </button>
                         ))}
-                      </div>
+                      </div>,
+                      document.body
                     )}
                   </div>
                 </div>
@@ -281,7 +307,13 @@ export default function Home() {
       </aside>
 
       {/* Map */}
-      <main className="relative flex-1">
+      <main className="relative flex-1 h-full">
+        <button
+          onClick={() => setSidebarOpen(!sidebarOpen)}
+          className="absolute top-4 left-4 z-10 rounded-full bg-white p-2 shadow-md md:hidden dark:bg-zinc-950"
+        >
+          ☰
+        </button>
         <Map
           locations={locations}
           selectedId={selectedId}
